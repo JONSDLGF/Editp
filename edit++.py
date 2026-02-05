@@ -7,21 +7,59 @@ ROOT_DIR = pathlib.Path(__file__).parent.resolve()
 
 import ttytools
 
-ver="v1.0.0"
-
+ver="v1.1.0"
 tab = 0
-rlist = [
-    ROOT_DIR / "a.txt",
-    ROOT_DIR / "b.txt",
-    ROOT_DIR / "c.txt",
-]
+
+rlist = []
 texts = {}
-for i in rlist:
-    texts[i] = [
-        open(i, "r").read(),
-        [],
-        0
-    ]
+
+if len(sys.argv)>1:
+    if sys.argv[1] == "-o":
+        rlist=sys.argv[2:]
+    elif sys.argv[1] == "-h":
+        print(
+f"""
+-----------------------------------------
+   EDIT++ {ver} - Quick Help
+-----------------------------------------
+COMMANDS (Press ESC to type):
+
+  open [file]    Open a new file
+  save           Save current buffer
+  sass [path]    Save as (custom path)
+  
+  tab <          Previous tab
+  tab >          Next tab
+  
+  line [n]       Jump to line
+  row [n]        Jump to column
+  
+  z              Undo last change
+  cmd [shell]    Run system command
+  exit           Close editor
+
+HOTKEYS:
+  Arrows         Move cursor
+  Backspace      Delete character
+  Enter          New line / Execute cmd
+-----------------------------------------
+"""
+)
+        sys.exit(-1)
+    else:
+        sys.stdout.write("why, use -h for more info")
+        sys.exit(-1)
+
+if len(rlist):
+    for i in rlist:
+        texts[i] = [
+            open(i, "r").read(),
+            [],
+            0
+        ]
+else:
+    rlist.append("/unknow.txt")
+    texts[rlist[0]] = [ "", [], 0 ]
 
 cur_y=1
 cur_x=0
@@ -56,21 +94,17 @@ with ttytools.NonBlockingTTY() as NBT:
                 cur_x=0
 
             x = 1
+            c = Size.columns//len(rlist)
+            addh = ""
             for i in range(len(rlist)):
-                addl=""+"*"*(i==tab)
-                addh=""
+                addl = "" + "*" * (i == tab)
                 ttytools.rect(
-                    x,
-                    1,
-                    Size.columns//len(rlist),
-                    1,
+                    x,1,c,1,
                     info = (
-                        addl +
-                        str(rlist[i])[-((Size.columns//len(rlist))-10):] +
-                        addh
+                        addl + str(rlist[i])[10-c:] + addh
                     )
                 )
-                x+=Size.columns//len(rlist)
+                x += c
 
             ttytools.rect(
                 1,
@@ -82,15 +116,13 @@ with ttytools.NonBlockingTTY() as NBT:
             )
             
             i     = 0
-            line  = 0
             char  = texts[rlist[tab]][0].splitlines()
 
             while (i<(Size.lines-6))and((i+scrool_y)<len(char)):
                 sys.stdout.write(
-                    f"\x1b[{2+1+line};{2}H"+
+                    f"\x1b[{3+i};{2}H"+
                     char[i+scrool_y][scrool_x:scrool_x+Size.columns-2]+"\n"
                 )
-                line+=1
                 i+=1
 
             sys.stdout.write(
@@ -116,67 +148,82 @@ with ttytools.NonBlockingTTY() as NBT:
                 ttytools.rect(1,y-2,Size.columns,3)
                 sys.stdout.write(f"\x1b[{y-1};{2}H" "[" + mesg + "]>")
                 sys.stdout.write("\x1b[?25h") # Mostrar cursor para escribir
+                sys.stdout.flush()
                 NBT.__exit__()
                 command = input("")
                 NBT.__enter__()
                 sys.stdout.write("\x1b[?25l") # Ocultar
-                if command == "save":
-                    open(rlist[tab],"w").write(texts[rlist[tab]][0])
-                elif command[:4] == "open":
-                    rootp = pathlib.Path(command[5:])
-                    root = command[5:]
-                    if rootp.exists() and rootp.is_file():
-                        if root not in rlist:
-                            rlist.append(root)
-                            texts[root][0] = [
-                                root.read_text(),
-                                [],
-                                0
-                            ]
-                        tab = len(rlist) - 1
-                        mesg = "Opend"
-                    else:
-                        mesg = "File not exist"
-                elif command[:3] == "tab":
-                    com = command[3:]
-                    if com=="<":
-                        tab = max(tab-1,0)
-                    if com==">":
-                        tab = min(tab+1,len(rlist)-1)
-                elif command[:3] == "row":
-                    cur_x = max(int(command[4:]),0)
-                elif command[:4] == "line":
-                    cur_y = max(int(command[5:]),0)
-                elif command == "z":
-                    historial = texts[rlist[tab]][1]
-                    if historial:
-                        linea_idx, contenido_viejo = historial.pop()
-                        actual_chars = texts[rlist[tab]][0].splitlines()
-                        
-                        if contenido_viejo is None:
-                            # Si antes no existía, la borramos
-                            actual_chars.pop(linea_idx)
-                        else:
-                            # Si existía, restauramos su valor
-                            actual_chars[linea_idx] = contenido_viejo
-                        
-                        texts[rlist[tab]][0] = "\n".join(actual_chars)
-                        mesg = "ZOK"
-                    else:
-                        mesg = "ZNON"
-                elif command[:3] == "cmd":
-                    sys.stdout.write("\x1b[?1049l\x1b[?25h")
-                    sys.stdout.flush()
-                    sys.stdout.write(f"Runing: {command[4:]}\n\n")
-                    sys.stdout.flush()
-                    os.system(command[4:])
-                    input("\n[Press Enter to return the editor]")
-                    sys.stdout.write("\x1b[?1049h\x1b[?25l")
-                    sys.stdout.flush()
-                elif command == "exit":
-                    loop = False
-                else:
-                    mesg="cmd?"
+                for i in [
+                    [
+                        0,command
+                    ],[
+                        1,command[:3]
+                    ],[
+                        2,command[:4]
+                    ]]:
+                    match i:
+                        case [0,"save"]:
+                            try:
+                                open(rlist[tab],"w").write(texts[rlist[tab]][0])
+                            except:
+                                mesg = "SASS?"
+                                break
+                        case [0,"exit"]:
+                            loop = False
+                        case [0,"z"]:
+                            t = texts[rlist[tab]]
+                            if t[1]:
+                                linea_idx, contenido_viejo = t[1].pop()
+                                actual_chars = t[0].splitlines()
+                                
+                                if contenido_viejo is None:
+                                    # Si antes no existía, la borramos
+                                    actual_chars.pop(linea_idx)
+                                else:
+                                    # Si existía, restauramos su valor
+                                    actual_chars[linea_idx] = contenido_viejo
+                                
+                                t[0] = "\n".join(actual_chars)
+                                mesg = "ZOK"
+                            else:
+                                mesg = "ZNON"
+                        case [1,"cmd"]:
+                            sys.stdout.write("\x1b[?1049l\x1b[?25h")
+                            sys.stdout.write(f"Runing: {command[4:]}\n\n")
+                            sys.stdout.flush()
+                            os.system(command[4:])
+                            input("\n[Press Enter to return the editor]")
+                            sys.stdout.write("\x1b[?1049h\x1b[?25l")
+                            sys.stdout.flush()
+                        case [1,"tab"]:
+                            com = command[3:]
+                            if com=="<":
+                                tab = max(tab-1,0)
+                            if com==">":
+                                tab = min(tab+1,len(rlist)-1)
+                        case [1,"row"]:
+                            cur_x = max(int(command[4:]),0)
+                        case [2,"open"]:
+                            rootp = pathlib.Path(command[5:])
+                            root = command[5:]
+                            if rootp.exists() and rootp.is_file():
+                                if root not in rlist:
+                                    rlist.append(root)
+                                    texts[root] = [
+                                        rootp.read_text(),
+                                        [],
+                                        0
+                                    ]
+                                tab = len(rlist) - 1
+                                mesg = "Opend"
+                            else:
+                                mesg = "File not exist"
+                        case [2,"line"]:
+                            cur_y = max(int(command[5:]),0)
+                        case [2,"sass"]:
+                            open(command[5:],"w").write(texts[rlist[tab]][0])
+                        case _:
+                            mesg="cmd?"
         else:
             chars:list = texts[rlist[tab]][0].splitlines()
             idx_y = (cur_y+scrool_y) - 1  # Ajustamos para índice 0-based
@@ -245,6 +292,5 @@ with ttytools.NonBlockingTTY() as NBT:
                 
             texts[rlist[tab]][0] = "\n".join(chars)
             mesg = "OK"
-
-
-sys.stdout.write("\x1b[?1049l\x1b[?25h")
+    NBT.__exit__()
+    sys.stdout.write("\x1b[?1049l\x1b[?25h")

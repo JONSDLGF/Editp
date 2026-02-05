@@ -1,4 +1,6 @@
 import sys
+import termios
+import tty
 
 def rect(x,y,w,h,sh=None,sw=None,info=""):
     w-=2
@@ -36,11 +38,6 @@ def rect(x,y,w,h,sh=None,sw=None,info=""):
 clear=lambda:\
     sys.stdout.write("\x1b[H\x1b[2J\x1b[3J")
 
-
-import termios
-import tty
-import select
-
 class NonBlockingTTY:
     def __enter__(self):
         # Guardamos la configuración original
@@ -49,6 +46,6 @@ class NonBlockingTTY:
         tty.setcbreak(sys.stdin.fileno())
         return self
 
-    def __exit__(self):
+    def __exit__(self,*n):
         # Al salir (o si hay error), restauramos la terminal
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)

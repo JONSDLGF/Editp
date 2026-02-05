@@ -1,0 +1,23 @@
+============================================================
+LICENCIA DE USO PERSONAL - EDIT++
+============================================================
+
+Copyright (c) 2026 JONSDLGF
+
+Se permite a cualquier persona obtener una copia de este 
+software para:
+1. Uso estrictamente personal.
+2. Modificación y adaptación para necesidades propias.
+
+RESTRICCIONES:
+- No se permite la republicación o redistribución del 
+  software original o modificado sin el consentimiento 
+  expreso del autor.
+- Si deseas compartir una variante (desvío), debes 
+  atribuir la autoría original a JONSDLGF.
+
+EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE 
+NINGÚN TIPO, EXPRESA O IMPLÍCITA. EL AUTOR NO SE HACE 
+RESPONSABLE DE NINGUNA RECLAMACIÓN O DAÑO DERIVADO DEL 
+USO DE ESTE SOFTWARE.
+============================================================
